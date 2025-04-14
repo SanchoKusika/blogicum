@@ -18,6 +18,18 @@ def create_post(request):
     return render(request, 'blog/create.html', {'form': form})
 
 
+def edit_post(request, id):
+    post = get_object_or_404(Post, pk=id)
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            form.save()
+            return redirect('blog:post_detail', id=post.id)
+    else:
+        form = PostForm(instance=post)
+    return render(request, 'blog/create.html', {'form': form})
+
+
 def index(request):
     qs = Post.objects.filter(
         pub_date__lte=timezone.now(),
