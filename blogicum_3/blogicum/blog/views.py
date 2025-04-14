@@ -1,6 +1,21 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from .models import Post, Category
+from .forms import PostForm
+
+
+def create_post(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.created_at = timezone.now()
+            post.save()
+            return redirect('blog:post_detail', id=post.id)
+    else:
+        form = PostForm()
+    return render(request, 'blog/create.html', {'form': form})
 
 
 def index(request):
