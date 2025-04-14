@@ -65,6 +65,14 @@ def edit_comment(request, post_id, comment_id):
     return render(request, 'blog/comment.html', {'form': form, 'post': comment.post})
 
 
+def delete_comment(request, post_id, comment_id):
+    comment = get_object_or_404(Comment, pk=comment_id, post_id=post_id)
+    if request.method == 'POST':
+        comment.delete()
+        return redirect('blog:post_detail', id=post_id)
+    return render(request, 'blog/comment.html', {'comment': comment, 'post': comment.post})
+
+
 def index(request):
     qs = Post.objects.filter(
         pub_date__lte=timezone.now(),
