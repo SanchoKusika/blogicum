@@ -30,6 +30,14 @@ def edit_post(request, id):
     return render(request, 'blog/create.html', {'form': form})
 
 
+def delete_post(request, id):
+    post = get_object_or_404(Post, pk=id)
+    if request.method == 'POST':
+        post.delete()
+        return redirect('blog:index')
+    return render(request, 'blog/create.html', {'form': post})
+
+
 def index(request):
     qs = Post.objects.filter(
         pub_date__lte=timezone.now(),
