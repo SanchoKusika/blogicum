@@ -1,21 +1,51 @@
 from django.contrib import admin
-from .models import Post, Category, Location
+from blog.constants import NUM_OF_WORDS_OF_TEXT, NUM_OF_WORDS_OF_TITLE
+from blog.models import Category, Comment, Location, Post
+from django.utils.html import format_html
+
+admin.site.empty_value_display = 'Не задано'
 
 
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('title', 'is_published', 'created_at')
-    prepopulated_fields = {'slug': ('title',)}
-    fieldsets = (
-        (None, {
-            'fields': ('title', 'description', 'slug', 'is_published', 'created_at')
-        }),
+@admin.register(Post)
+class PostAdmin(admin.ModelAdmin):
+    list_display = (
+        'get_short_title',
+        'get_short_text',
+        'pub_date',
+        'category',
+        'is_published',
+        'get_comment_count',
+        'image_tag',
     )
+    list_editable = (
+        'is_published',
+        'pub_date',
+        'category'
+    )
+    search_fields = ('title', 'text',)
+    list_filter = ('category', 'location',)
+
+    @admin.display(description='Заголовок')
+    def get_short_title(self, obj):
+        return " ".join(obj.title.split()[:NUM_OF_WORDS_OF_TITLE])
+
+    @admin.display(description='Описание')
+    def get_short_text(self, obj):
+        return f'{" ".join(obj.text.split()[:NUM_OF_WORDS_OF_TEXT])} ...'
+
+    @admin.display(description='Комментарии')
+    def get_comment_count(self, obj):
+        return obj.comments.count()
+
+    @admin.display(description='Изображение')
+    def image_tag(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" width="50" height="50" />'.format(obj.image.url)
+            )
+        return 'Не найдено'
 
 
-admin.site.register(Category, CategoryAdmin)
+admin.site.register(Category)
 admin.site.register(Location)
-admin.site.register(Post)
-
-admin.site.site_title = "Админка Блога"
-admin.site.site_header = "Блог"
-admin.site.index_title = "Панель управления"
+admin.site.register(Comment)
