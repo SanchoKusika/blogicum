@@ -1,118 +1,227 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Q
+from django.urls import reverse
 from django.utils import timezone
-from .models import Post, Category, Comment
-from .forms import PostForm, CommentForm, RegistrationForm
+from django.views.generic import (CreateView, DeleteView, DetailView, ListView, UpdateView)
+from blog.constants import NUM_OF_POSTS
+from blog.forms import CommentForm, PostForm, UserForm
+from blog.models import Category, Comment, Post, User
 
 
-def create_post(request):
-    if request.method == 'POST':
-        form = PostForm(request.POST, request.FILES)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.created_at = timezone.now()
-            post.save()
-            return redirect('blog:post_detail', id=post.id)
-    else:
-        form = PostForm()
-    return render(request, 'blog/create.html', {'form': form})
+class PostListMixin(ListView):
+
+    model = Post
+    paginate_by = NUM_OF_POSTS
+    template_name = 'blog/index.html'
+
+    def get_queryset(self):
+        return Post.objects.filter(
+            is_published=True,
+            category__is_published=True,
+            pub_date__lte=timezone.now(),
+        ).annotate(
+            num_comments=Count('comments')
+        ).order_by(
+            '-pub_date'
+        ).select_related(
+            'author', 'category', 'location'
+        )
 
 
-def edit_post(request, id):
-    post = get_object_or_404(Post, pk=id)
-    if request.method == 'POST':
-        form = PostForm(request.POST, request.FILES, instance=post)
-        if form.is_valid():
-            form.save()
-            return redirect('blog:post_detail', id=post.id)
-    else:
-        form = PostForm(instance=post)
-    return render(request, 'blog/create.html', {'form': form})
+class PostCommentMixin:
+
+    model = Post
+    template_name = 'blog/create.html'
+    pk_url_kwarg = 'post_id'
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != self.request.user:
+            return redirect(reverse(
+                'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+            ))
+        return super().dispatch(request, *args, **kwargs)
 
 
-def delete_post(request, id):
-    post = get_object_or_404(Post, pk=id)
-    if request.method == 'POST':
-        post.delete()
-        return redirect('blog:index')
-    return render(request, 'blog/create.html', {'form': post})
+class CommentMixin:
+
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+        )
 
 
-def add_comment(request, id):
-    post = get_object_or_404(Post, pk=id)
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.author = request.user
-            comment.post = post
-            comment.save()
-            return redirect('blog:post_detail', id=post.id)
-    else:
-        form = CommentForm()
-    return render(request, 'blog/comment.html', {'form': form, 'post': post})
+class PostListView(PostListMixin):
+    pass
 
 
-def edit_comment(request, post_id, comment_id):
-    comment = get_object_or_404(Comment, pk=comment_id, post_id=post_id)
-    if request.method == 'POST':
-        form = CommentForm(request.POST, instance=comment)
-        if form.is_valid():
-            form.save()
-            return redirect('blog:post_detail', id=post_id)
-    else:
-        form = CommentForm(instance=comment)
-    return render(request, 'blog/comment.html', {'form': form, 'post': comment.post})
+class CategoryListView(PostListMixin):
+
+    template_name = 'blog/category.html'
+
+    def get_queryset(self):
+        self.category = get_object_or_404(
+            Category, is_published=True, slug=self.kwargs['post_category']
+        )
+        return super().get_queryset().filter(
+            category__slug=self.kwargs['post_category']
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['category'] = self.category
+        return context
 
 
-def delete_comment(request, post_id, comment_id):
-    comment = get_object_or_404(Comment, pk=comment_id, post_id=post_id)
-    if request.method == 'POST':
-        comment.delete()
-        return redirect('blog:post_detail', id=post_id)
-    return render(request, 'blog/comment.html', {'comment': comment, 'post': comment.post})
+class ProfileDetailView(PostListMixin):
+
+    template_name = 'blog/profile.html'
+
+    def get_queryset(self):
+        self.profile = get_object_or_404(
+            User, username=self.kwargs['username']
+        )
+
+        if self.profile != self.request.user:
+            queryset = super().get_queryset().filter(
+                author__username=self.kwargs['username']
+            )
+        else:
+            queryset = Post.objects.filter(
+                author__username=self.kwargs['username']
+            ).annotate(
+                num_comments=Count('comments')
+            ).order_by(
+                '-pub_date'
+            ).select_related(
+                'author', 'category', 'location'
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['profile'] = self.profile
+        return context
 
 
-def register(request):
-    if request.method == 'POST':
-        form = RegistrationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('login')
-    else:
-        form = RegistrationForm()
-    return render(request, 'registration/registration_form.html', {'form': form})
+class UserCreateView(CreateView):
+
+    template_name = 'registration/registration_form.html'
+    form_class = UserCreationForm
+
+    def get_success_url(self):
+        return reverse('blog:index')
 
 
-def index(request):
-    qs = Post.objects.filter(
-        pub_date__lte=timezone.now(),
-        is_published=True,
-        category__is_published=True
-    ).order_by('-pub_date')[:5]
-    return render(request, 'blog/index.html', {'post_list': qs})
+class UserUpdateView(LoginRequiredMixin, UpdateView):
+
+    model = User
+    form_class = UserForm
+    template_name = 'blog/user.html'
+
+    def get_object(self):
+        return self.request.user
+
+    def get_success_url(self):
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.request.user.username}
+        )
 
 
-def category_posts(request, category_slug):
-    category = get_object_or_404(
-        Category, slug=category_slug, is_published=True)
-    qs = Post.objects.filter(
-        category=category,
-        pub_date__lte=timezone.now(),
-        is_published=True
-    ).order_by('-pub_date')
-    return render(request, 'blog/category.html', {
-        'category': category,
-        'post_list': qs,
-    })
+class PostDetailView(DetailView):
+
+    model = Post
+    template_name = 'blog/detail.html'
+    pk_url_kwarg = 'post_id'
+
+    def get_object(self):
+        if self.request.user.is_authenticated:
+            return get_object_or_404(
+                Post, Q(author=self.request.user)
+                | (
+                    Q(is_published=True)
+                    & Q(category__is_published=True)
+                    & Q(pub_date__lte=timezone.now())
+                ),
+                pk=self.kwargs['post_id']
+            )
+        return get_object_or_404(
+            Post,
+            is_published=True,
+            category__is_published=True,
+            pub_date__lte=timezone.now(),
+            pk=self.kwargs['post_id']
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = CommentForm()
+        context['comments'] = (
+            self.object.comments.select_related('author', 'post')
+        )
+        return context
 
 
-def post_detail(request, id):
-    post = get_object_or_404(
-        Post,
-        pk=id,
-        pub_date__lte=timezone.now(),
-        is_published=True,
-        category__is_published=True
-    )
-    return render(request, 'blog/detail.html', {'post': post})
+class PostCreateView(LoginRequiredMixin, CreateView):
+
+    model = Post
+    form_class = PostForm
+    template_name = 'blog/create.html'
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.object.author.username}
+        )
+
+
+class PostUpdateView(LoginRequiredMixin, PostCommentMixin, UpdateView):
+
+    form_class = PostForm
+
+
+class PostDeleteView(LoginRequiredMixin, PostCommentMixin, DeleteView):
+
+    def get_success_url(self):
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.object.author.username}
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = PostForm(instance=self.object)
+        return context
+
+
+class CommentCreateView(LoginRequiredMixin, CommentMixin, CreateView):
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        form.instance.post = get_object_or_404(
+            Post, pk=self.kwargs['post_id']
+        )
+        return super().form_valid(form)
+
+
+class CommentUpdateView(
+    LoginRequiredMixin, CommentMixin, PostCommentMixin, UpdateView
+):
+    pass
+
+
+class CommentDeleteView(
+    LoginRequiredMixin, CommentMixin, PostCommentMixin, DeleteView
+):
+    pass
