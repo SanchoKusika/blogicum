@@ -37,8 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'blog',
-    'pages',
+    'django_bootstrap5',
+    'debug_toolbar',
+    'blog.apps.BlogConfig',
+    'pages.apps.PagesConfig',
 ]
 
 MIDDLEWARE = [
@@ -49,9 +51,20 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
+]
+
+INTERNAL_IPS = [
+    '127.0.0.1',
 ]
 
 ROOT_URLCONF = 'blogicum.urls'
+
+CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
+
+ROOT_URLCONF = 'blogicum.urls'
+
+TEMPLATES_DIR = BASE_DIR / 'templates'
 
 TEMPLATES = [
     {
