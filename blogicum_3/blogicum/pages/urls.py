@@ -1,9 +1,17 @@
 from django.urls import path
-from . import views
+from pages import views
 
-app_name = 'pages'  # Указываем namespace для приложения pages
+app_name = 'pages'
 
 urlpatterns = [
-    path('about/', views.about, name='about'),  # Страница "О проекте"
-    path('rules/', views.rules, name='rules'),  # Страница "Наши правила"
+    path(
+        'about/',
+        views.AboutTemplateView.as_view(),
+        name='about'
+    ),
+    path(
+        'rules/',
+        views.RulesTemplateView.as_view(),
+        name='rules'
+    )
 ]
