@@ -53,6 +53,18 @@ def add_comment(request, id):
     return render(request, 'blog/comment.html', {'form': form, 'post': post})
 
 
+def edit_comment(request, post_id, comment_id):
+    comment = get_object_or_404(Comment, pk=comment_id, post_id=post_id)
+    if request.method == 'POST':
+        form = CommentForm(request.POST, instance=comment)
+        if form.is_valid():
+            form.save()
+            return redirect('blog:post_detail', id=post_id)
+    else:
+        form = CommentForm(instance=comment)
+    return render(request, 'blog/comment.html', {'form': form, 'post': comment.post})
+
+
 def index(request):
     qs = Post.objects.filter(
         pub_date__lte=timezone.now(),
