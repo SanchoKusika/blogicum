@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from .models import Post, Category
-from .forms import PostForm
+from .models import Post, Category, Comment
+from .forms import PostForm, CommentForm
 
 
 def create_post(request):
@@ -36,6 +36,21 @@ def delete_post(request, id):
         post.delete()
         return redirect('blog:index')
     return render(request, 'blog/create.html', {'form': post})
+
+
+def add_comment(request, id):
+    post = get_object_or_404(Post, pk=id)
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.author = request.user
+            comment.post = post
+            comment.save()
+            return redirect('blog:post_detail', id=post.id)
+    else:
+        form = CommentForm()
+    return render(request, 'blog/comment.html', {'form': form, 'post': post})
 
 
 def index(request):
