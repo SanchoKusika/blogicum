@@ -2,11 +2,11 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 
 
-class RulesTemplateView(TemplateView):
+class RulesView(TemplateView):
     template_name = 'pages/rules.html'
 
 
-class AboutTemplateView(TemplateView):
+class AboutView(TemplateView):
     template_name = 'pages/about.html'
 
 
