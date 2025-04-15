@@ -26,7 +26,7 @@ pip install -r requirements.txt
 python manage.py migrate
 ```
 
-### 8. Запустить проект:
+### 5. Запустить проект:
 
 ```sh
 python manage.py runserver
