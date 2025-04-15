@@ -1,51 +1,48 @@
 from django.contrib import admin
-from blog.constants import NUM_OF_WORDS_OF_TEXT, NUM_OF_WORDS_OF_TITLE
-from blog.models import Category, Comment, Location, Post
-from django.utils.html import format_html
+from .models import Category, Location, Post
 
 admin.site.empty_value_display = 'Не задано'
 
 
-@admin.register(Post)
+class PostInline(admin.TabularInline):
+    model = Post
+    extra = 0
+
+
+class CategoryAdmin(admin.ModelAdmin):
+    inlines = (
+        PostInline,
+    )
+
+
+class LocationAdmin(admin.ModelAdmin):
+    inlines = (
+        PostInline,
+    )
+
+
 class PostAdmin(admin.ModelAdmin):
     list_display = (
-        'get_short_title',
-        'get_short_text',
+        'title',
+        'text',
         'pub_date',
+        'author',
+        'location',
         'category',
         'is_published',
-        'get_comment_count',
-        'image_tag',
+        'created_at'
     )
     list_editable = (
-        'is_published',
-        'pub_date',
-        'category'
+        'author',
+        'location',
+        'category',
+        'is_published'
     )
-    search_fields = ('title', 'text',)
-    list_filter = ('category', 'location',)
-
-    @admin.display(description='Заголовок')
-    def get_short_title(self, obj):
-        return " ".join(obj.title.split()[:NUM_OF_WORDS_OF_TITLE])
-
-    @admin.display(description='Описание')
-    def get_short_text(self, obj):
-        return f'{" ".join(obj.text.split()[:NUM_OF_WORDS_OF_TEXT])} ...'
-
-    @admin.display(description='Комментарии')
-    def get_comment_count(self, obj):
-        return obj.comments.count()
-
-    @admin.display(description='Изображение')
-    def image_tag(self, obj):
-        if obj.image:
-            return format_html(
-                '<img src="{}" width="50" height="50" />'.format(obj.image.url)
-            )
-        return 'Не найдено'
+    search_fields = ('title',)
+    list_filter = ('is_published',)
+    list_display_links = ('title',)
 
 
-admin.site.register(Category)
-admin.site.register(Location)
-admin.site.register(Comment)
+admin.site.register(Post, PostAdmin)
+admin.site.register(Category, CategoryAdmin)
+admin.site.register(Location, LocationAdmin)
