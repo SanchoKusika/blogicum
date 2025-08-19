@@ -1,32 +1,32 @@
-# Блогикум
+# Blogikum
 
-## Как запустить:
+## How to Run:
 
-### 1. Cоздать виртуальное окружение (в корне проекта):
+### 1. Create a virtual environment (in the project root):
 
 ```sh
 python -m venv venv
 ```
 
-### 2. Активировать виртуальное окружение (в корне проекта):
+### 2. Activate the virtual environment (in the project root):
 
 ```sh
 .\venv\Scripts\activate
 ```
 
-### 3. Установка зависимостей (в корне проекта):
+### 3. Install dependencies (in the project root):
 
 ```sh
 pip install -r requirements.txt
 ```
 
-### 4. Выполнение миграции:
+### 4. Apply migrations:
 
 ```sh
 python manage.py migrate
 ```
 
-### 5. Запустить проект:
+### 5. Start the project:
 
 ```sh
 python manage.py runserver
@@ -34,7 +34,7 @@ python manage.py runserver
 
 ---
 
-### Загрузить данные из файла db.json в базу данных:
+### Load data from db.json into the database:
 
 ```sh
 python manage.py loaddata ../db.json
